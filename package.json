@@ -1,0 +1,12 @@
+{
+  "name": "lunch-bot",
+  "version": "1.0.0",
+  "description": "Slack lunch bot - suggests restaurants on Tue/Thu with shuffle and DoorDash",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "@slack/web-api": "^7.0.0",
+    "@vercel/kv": "^2.0.0",
+    "js-yaml": "^4.1.0"
+  }
+}

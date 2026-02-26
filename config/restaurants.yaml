@@ -1,0 +1,40 @@
+# Edit this file to manage your team's restaurant list.
+# Each restaurant can have: name, emoji, cuisine, and optional doordash_url.
+# name and emoji are required.
+
+restaurants:
+  - name: "Joe's Pizza"
+    emoji: "🍕"
+    cuisine: "Pizza"
+    doordash_url: "https://www.doordash.com/store/joes-pizza/12345"
+
+  - name: "Sushi Palace"
+    emoji: "🍣"
+    cuisine: "Japanese"
+    doordash_url: "https://www.doordash.com/store/sushi-palace/67890"
+
+  - name: "Taco Loco"
+    emoji: "🌮"
+    cuisine: "Mexican"
+
+  - name: "Pho King Good"
+    emoji: "🍜"
+    cuisine: "Vietnamese"
+    doordash_url: "https://www.doordash.com/store/pho-king-good/11111"
+
+  - name: "Salad Bar Express"
+    emoji: "🥗"
+    cuisine: "American"
+
+  - name: "Curry House"
+    emoji: "🍛"
+    cuisine: "Indian"
+
+  - name: "Burger Joint"
+    emoji: "🍔"
+    cuisine: "American"
+    doordash_url: "https://www.doordash.com/store/burger-joint/22222"
+
+  - name: "Noodle Town"
+    emoji: "🥢"
+    cuisine: "Chinese"
