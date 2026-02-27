@@ -1,9 +1,9 @@
 import { kv } from '@vercel/kv';
 import { WebClient } from '@slack/web-api';
-import { loadRestaurants, pickRestaurant, fetchDiscoveryPlace } from '../lib/restaurants.js';
-import { buildStandardBlocks, buildDiscoveryBlocks } from '../lib/slack-blocks.js';
+import { loadRestaurants, pickRestaurant, fetchDiscoveryPlace, getNextCaptain } from '../lib/restaurants.js';
+import { buildStandardBlocks, buildDiscoveryBlocks, buildCaptainBlocks } from '../lib/slack-blocks.js';
 
-// 11:30 AM ET: EST = 16:30 UTC, EDT = 15:30 UTC. Cron runs at 15:30 and 16:30 UTC on Tue/Thu.
+// Lunch window: 11:30–12:59 ET. Cron runs once at 16:30 UTC on Tue/Thu (11:30 ET winter, 12:30 ET summer).
 function isLunchTimeET() {
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -18,9 +18,9 @@ function isLunchTimeET() {
   const hour = parseInt(parts.hour || '0', 10);
   const minute = parseInt(parts.minute || '0', 10);
   if (dayName !== 'tue' && dayName !== 'thu') return false;
-  if (hour !== 11) return false;
-  if (minute < 30 || minute > 39) return false;
-  return true;
+  if (hour === 11 && minute >= 30) return true;
+  if (hour === 12) return true;
+  return false;
 }
 
 export default async function handler(req, res) {
@@ -37,7 +37,8 @@ export default async function handler(req, res) {
     }
   }
 
-  if (!isLunchTimeET()) {
+  const manualTrigger = req.query?.test === '1';
+  if (!manualTrigger && !isLunchTimeET()) {
     res.status(200).json({ ok: true, skipped: true, reason: 'not_lunch_time_et' });
     return;
   }
@@ -59,7 +60,10 @@ export default async function handler(req, res) {
   let isDiscovery = false;
   let discoveryPlace = null;
 
-  if (Math.random() < 0.2) {
+  const forceDiscovery = manualTrigger && req.query?.discovery === '1';
+  const tryDiscovery = forceDiscovery || Math.random() < 0.2;
+
+  if (tryDiscovery) {
     const lat = parseFloat(process.env.DISCOVERY_LAT);
     const lng = parseFloat(process.env.DISCOVERY_LNG);
     if (process.env.GOOGLE_PLACES_API_KEY && Number.isFinite(lat) && Number.isFinite(lng)) {
@@ -74,6 +78,16 @@ export default async function handler(req, res) {
   if (!blocks) {
     const restaurant = await pickRestaurant(kvClient);
     blocks = buildStandardBlocks(restaurant);
+  }
+
+  let captain;
+  if (manualTrigger) {
+    captain = { captainDisplay: '<@U07932S1ZK5>' };
+  } else {
+    captain = await getNextCaptain(kvClient);
+  }
+  if (captain) {
+    blocks = [...buildCaptainBlocks(captain.captainDisplay), ...blocks];
   }
 
   const result = await slack.chat.postMessage({

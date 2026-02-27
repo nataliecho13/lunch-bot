@@ -1,7 +1,7 @@
 import { kv } from '@vercel/kv';
 import { WebClient } from '@slack/web-api';
-import { pickRestaurant, setLastLocked, loadRestaurants } from '../lib/restaurants.js';
-import { buildStandardBlocks } from '../lib/slack-blocks.js';
+import { pickRestaurant, setLastLocked, loadRestaurants, fetchDiscoveryPlace } from '../lib/restaurants.js';
+import { buildStandardBlocks, buildDiscoveryBlocks, buildCaptainBlocks, extractCaptainFromMessageBlocks } from '../lib/slack-blocks.js';
 
 function parsePayload(body) {
   if (body == null) return {};
@@ -54,6 +54,11 @@ export default async function handler(req, res) {
     res.status(200).send();
   };
 
+  const messageBlocks = payload?.message?.blocks || [];
+  const captainDisplay = extractCaptainFromMessageBlocks(messageBlocks);
+  const prependCaptain = (blocks) =>
+    captainDisplay ? [...buildCaptainBlocks(captainDisplay), ...blocks] : blocks;
+
   if (actionId === 'lunch_confirm') {
     const value = (action.value && JSON.parse(action.value)) || {};
     await setLastLocked(kvClient, value.name);
@@ -70,7 +75,28 @@ export default async function handler(req, res) {
       channel: channelId,
       ts: messageTs,
       text: `Lunch locked in: ${value.name}`,
-      blocks,
+      blocks: prependCaptain(blocks),
+    });
+    respondOk();
+    return;
+  }
+
+  if (actionId === 'lunch_go_back') {
+    const value = (action.value && JSON.parse(action.value)) || {};
+    const blocks = buildStandardBlocks(
+      {
+        name: value.name,
+        emoji: value.emoji || '🍽️',
+        cuisine: value.cuisine || '',
+        doordash_url: value.doordash_url || undefined,
+      },
+      { messageTs, isLocked: false }
+    );
+    await slack.chat.update({
+      channel: channelId,
+      ts: messageTs,
+      text: `Where should we eat lunch? ${value.name}`,
+      blocks: prependCaptain(blocks),
     });
     respondOk();
     return;
@@ -88,7 +114,7 @@ export default async function handler(req, res) {
       channel: channelId,
       ts: messageTs,
       text: `New suggestion: ${restaurant.name}`,
-      blocks,
+      blocks: prependCaptain(blocks),
     });
     respondOk();
     return;
@@ -107,11 +133,59 @@ export default async function handler(req, res) {
           },
         },
       ];
+      if (place.place_id) {
+        blocks.push({
+          type: 'actions',
+          block_id: 'lunch_discovery_locked_actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: '↩️ Go back', emoji: true },
+              action_id: 'lunch_discovery_go_back',
+              value: JSON.stringify(place),
+            },
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: '📍 View on Google Maps', emoji: true },
+              action_id: 'lunch_discovery_maps',
+              url: `https://www.google.com/maps/place/?q=place_id:${place.place_id}`,
+            },
+          ],
+        });
+      } else {
+        blocks.push({
+          type: 'actions',
+          block_id: 'lunch_discovery_locked_actions',
+          elements: [
+            {
+              type: 'button',
+              text: { type: 'plain_text', text: '↩️ Go back', emoji: true },
+              action_id: 'lunch_discovery_go_back',
+              value: JSON.stringify(place),
+            },
+          ],
+        });
+      }
       await slack.chat.update({
         channel: channelId,
         ts: messageTs,
         text: `Lunch locked in: ${place.name}`,
-        blocks,
+        blocks: prependCaptain(blocks),
+      });
+    }
+    respondOk();
+    return;
+  }
+
+  if (actionId === 'lunch_discovery_go_back') {
+    const place = action.value && JSON.parse(action.value);
+    if (place?.name) {
+      const blocks = buildDiscoveryBlocks(place, { messageTs });
+      await slack.chat.update({
+        channel: channelId,
+        ts: messageTs,
+        text: `Discovery: ${place.name} — ${place.cuisine}`,
+        blocks: prependCaptain(blocks),
       });
     }
     respondOk();
@@ -125,7 +199,56 @@ export default async function handler(req, res) {
       channel: channelId,
       ts: messageTs,
       text: `Back to the list: ${restaurant.name}`,
-      blocks,
+      blocks: prependCaptain(blocks),
+    });
+    respondOk();
+    return;
+  }
+
+  if (actionId === 'lunch_discovery_shuffle') {
+    const shuffleValue = (action.value && JSON.parse(action.value)) || {};
+    const excludePlaceId = shuffleValue.current_place_id || undefined;
+    const excludeName = shuffleValue.current_name || undefined;
+
+    const timeoutMs = 2800;
+    const lat = parseFloat(process.env.DISCOVERY_LAT);
+    const lng = parseFloat(process.env.DISCOVERY_LNG);
+    const fetchWithTimeout = (opts = {}) =>
+      Promise.race([
+        fetchDiscoveryPlace({ lat, lng }, opts),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+      ]);
+
+    let blocks;
+    try {
+      if (process.env.GOOGLE_PLACES_API_KEY && Number.isFinite(lat) && Number.isFinite(lng)) {
+        let discoveryPlace = await fetchWithTimeout({
+          excludePlaceId: excludePlaceId || undefined,
+          excludeName: excludeName || undefined,
+        });
+        if (!discoveryPlace) {
+          discoveryPlace = await fetchWithTimeout({});
+        }
+        if (discoveryPlace) {
+          blocks = buildDiscoveryBlocks(discoveryPlace, { messageTs });
+          await slack.chat.update({
+            channel: channelId,
+            ts: messageTs,
+            text: `Discovery: ${discoveryPlace.name} — ${discoveryPlace.cuisine}`,
+            blocks: prependCaptain(blocks),
+          });
+          respondOk();
+          return;
+        }
+      }
+    } catch (_) {}
+    const restaurant = await pickRestaurant(kvClient);
+    blocks = buildStandardBlocks(restaurant, { messageTs });
+    await slack.chat.update({
+      channel: channelId,
+      ts: messageTs,
+      text: `Back to the list: ${restaurant.name}`,
+      blocks: prependCaptain(blocks),
     });
     respondOk();
     return;

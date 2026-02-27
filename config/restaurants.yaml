@@ -1,40 +1,57 @@
 # Edit this file to manage your team's restaurant list.
 # Each restaurant can have: name, emoji, cuisine, and optional doordash_url.
 # name and emoji are required.
+#
+# Lunch Captain rotation: list Slack member IDs for @mentions (no @ prefix).
+lunch_captains:
+  - "U055QBCJ6UT"   # Anoop
+  - "U05GYUZ8RB2"   # Mike
+  - "U07L39D0430"   # Derrick
+  - "U09V5N62ZA9"   # Colton
+  - "U07932S1ZK5"   # Natalie
 
 restaurants:
-  - name: "Joe's Pizza"
-    emoji: "🍕"
-    cuisine: "Pizza"
-    doordash_url: "https://www.doordash.com/store/joes-pizza/12345"
-
-  - name: "Sushi Palace"
-    emoji: "🍣"
+  - name: "Glaze"
+    emoji: "🍚"
     cuisine: "Japanese"
-    doordash_url: "https://www.doordash.com/store/sushi-palace/67890"
-
-  - name: "Taco Loco"
-    emoji: "🌮"
-    cuisine: "Mexican"
-
-  - name: "Pho King Good"
-    emoji: "🍜"
-    cuisine: "Vietnamese"
-    doordash_url: "https://www.doordash.com/store/pho-king-good/11111"
-
-  - name: "Salad Bar Express"
+    doordash_url: "https://www.doordash.com/store/glaze-new-york-24964134/"
+  - name: "Terra"
     emoji: "🥗"
-    cuisine: "American"
-
-  - name: "Curry House"
-    emoji: "🍛"
+    cuisine: "Mediterranean"
+    doordash_url: "https://www.doordash.com/store/terra-eat-better-food-new-york-25132133/"
+  - name: "Naya"
+    emoji: "🥙"
+    cuisine: "Mediterranean"
+    doordash_url: "https://www.doordash.com/store/naya-new-york-30993412/"
+  - name: "Chipotle"
+    emoji: "🌯"
+    cuisine: "Mexican"
+    doordash_url: "https://www.doordash.com/store/chipotle-mexican-grill-new-york-272585/"
+  - name: "Inday"
+    emoji: "🇮🇳"
     cuisine: "Indian"
-
-  - name: "Burger Joint"
-    emoji: "🍔"
-    cuisine: "American"
-    doordash_url: "https://www.doordash.com/store/burger-joint/22222"
-
-  - name: "Noodle Town"
-    emoji: "🥢"
-    cuisine: "Chinese"
+    doordash_url: "https://www.doordash.com/store/inday-new-york-27971376/"
+  - name: "The Picnic Basket"
+    emoji: "🥪"
+    cuisine: "Sandwiches"
+    doordash_url: "https://www.doordash.com/store/the-picnic-basket-new-york-28059/"
+  - name: "Lan Larb"
+    emoji: "🇹🇭"
+    cuisine: "Thai"
+    doordash_url: "https://www.doordash.com/store/lan-larb-soho-new-york-54988/"
+  - name: "Springbone Kitchen"
+    emoji: "🥗"
+    cuisine: "Western"
+    doordash_url: ""
+  - name: "Som Bo"
+    emoji: "🍚"
+    cuisine: "Asian"
+    doordash_url: "https://www.doordash.com/store/som-bo:-healthy-asian-bowls-new-york-193183/"
+  - name: "Sweetgreen"
+    emoji: "🥗"
+    cuisine: "Salad"
+    doordash_url: "https://www.doordash.com/store/sweetgreen-new-york-9257/"
+  - name: "Dig Inn"
+    emoji: "🍠"
+    cuisine: "Western"
+    doordash_url: "https://www.doordash.com/store/dig-inn-new-york-904094/"
