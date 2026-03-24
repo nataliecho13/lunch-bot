@@ -2,6 +2,10 @@
   "crons": [
     {
       "path": "/api/cron-lunch",
+      "schedule": "30 14 * * 2,4"
+    },
+    {
+      "path": "/api/cron-lunch",
       "schedule": "30 15 * * 2,4"
     }
   ]

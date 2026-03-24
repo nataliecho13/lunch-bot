@@ -1,8 +1,15 @@
 import kv from '../lib/kv.js';
 import { WebClient } from '@slack/web-api';
+import {
+  hasPreCronManualTodayET,
+  hasCronLunchPostedTodayET,
+  markCronLunchPostedTodayET,
+} from '../lib/restaurants.js';
 import { postLunchSuggestion } from '../lib/post-lunch-suggestion.js';
 
-// Lunch window: 11:30–12:59 ET. Cron runs once at 16:30 UTC on Tue/Thu (11:30 ET winter, 12:30 ET summer).
+// Two UTC crons (`30 14` and `30 15` Tue/Thu) target ~10:30 AM America/New_York; Vercel can run late.
+// Wide ET window (10:00–12:59) so delayed jobs still post. Redis `hasCronLunchPostedTodayET` prevents
+// the second UTC slot from double-posting the same day.
 function isLunchTimeET() {
   const now = new Date();
   const formatter = new Intl.DateTimeFormat('en-US', {
@@ -17,9 +24,8 @@ function isLunchTimeET() {
   const hour = parseInt(parts.hour || '0', 10);
   const minute = parseInt(parts.minute || '0', 10);
   if (dayName !== 'tue' && dayName !== 'thu') return false;
-  if (hour === 11 && minute >= 30) return true;
-  if (hour === 12) return true;
-  return false;
+  const t = hour * 60 + minute;
+  return t >= 10 * 60 && t <= 12 * 60 + 59;
 }
 
 export default async function handler(req, res) {
@@ -51,6 +57,16 @@ export default async function handler(req, res) {
 
   const kvClient = process.env.REDIS_URL ? kv : null;
 
+  if (!manualTrigger && (await hasPreCronManualTodayET(kvClient))) {
+    res.status(200).json({ ok: true, skipped: true, reason: 'precron_manual_today_et' });
+    return;
+  }
+
+  if (!manualTrigger && (await hasCronLunchPostedTodayET(kvClient))) {
+    res.status(200).json({ ok: true, skipped: true, reason: 'cron_lunch_already_posted_today_et' });
+    return;
+  }
+
   const slack = new WebClient(token);
   const forceDiscovery = manualTrigger && req.query?.discovery === '1';
 
@@ -63,6 +79,10 @@ export default async function handler(req, res) {
       ...(manualTrigger ? { captainDisplay: '<@U07932S1ZK5>' } : {}),
     },
   });
+
+  if (!manualTrigger) {
+    await markCronLunchPostedTodayET(kvClient);
+  }
 
   res.status(200).json({
     ok: true,
