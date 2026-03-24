@@ -1,4 +1,4 @@
-import { kv } from '@vercel/kv';
+import kv from '../lib/kv.js';
 import { WebClient } from '@slack/web-api';
 import { pickRestaurant, setLastLocked, loadRestaurants, fetchDiscoveryPlace } from '../lib/restaurants.js';
 import { buildStandardBlocks, buildDiscoveryBlocks, buildCaptainBlocks, extractCaptainFromMessageBlocks } from '../lib/slack-blocks.js';
@@ -39,10 +39,7 @@ export default async function handler(req, res) {
   }
 
   const slack = new WebClient(token);
-  let kvClient = null;
-  try {
-    kvClient = kv;
-  } catch (_) {}
+  const kvClient = process.env.REDIS_URL ? kv : null;
 
   const action = payload?.actions?.[0];
   const actionId = action?.action_id;

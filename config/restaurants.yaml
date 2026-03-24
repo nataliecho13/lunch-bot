@@ -42,7 +42,7 @@ restaurants:
   - name: "Springbone Kitchen"
     emoji: "🥗"
     cuisine: "Western"
-    doordash_url: ""
+    doordash_url: "https://www.doordash.com/store/springbone-kitchen-new-york-62309/"
   - name: "Som Bo"
     emoji: "🍚"
     cuisine: "Asian"

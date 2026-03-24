@@ -1,7 +1,6 @@
-import { kv } from '@vercel/kv';
+import kv from '../lib/kv.js';
 import { WebClient } from '@slack/web-api';
-import { loadRestaurants, pickRestaurant, fetchDiscoveryPlace, getNextCaptain } from '../lib/restaurants.js';
-import { buildStandardBlocks, buildDiscoveryBlocks, buildCaptainBlocks } from '../lib/slack-blocks.js';
+import { postLunchSuggestion } from '../lib/post-lunch-suggestion.js';
 
 // Lunch window: 11:30–12:59 ET. Cron runs once at 16:30 UTC on Tue/Thu (11:30 ET winter, 12:30 ET summer).
 function isLunchTimeET() {
@@ -50,58 +49,24 @@ export default async function handler(req, res) {
     return;
   }
 
-  let kvClient = null;
-  try {
-    kvClient = kv;
-  } catch (_) {}
+  const kvClient = process.env.REDIS_URL ? kv : null;
 
   const slack = new WebClient(token);
-  let blocks;
-  let isDiscovery = false;
-  let discoveryPlace = null;
-
   const forceDiscovery = manualTrigger && req.query?.discovery === '1';
-  const tryDiscovery = forceDiscovery || Math.random() < 0.2;
 
-  if (tryDiscovery) {
-    const lat = parseFloat(process.env.DISCOVERY_LAT);
-    const lng = parseFloat(process.env.DISCOVERY_LNG);
-    if (process.env.GOOGLE_PLACES_API_KEY && Number.isFinite(lat) && Number.isFinite(lng)) {
-      discoveryPlace = await fetchDiscoveryPlace({ lat, lng });
-      if (discoveryPlace) {
-        isDiscovery = true;
-        blocks = buildDiscoveryBlocks(discoveryPlace);
-      }
-    }
-  }
-
-  if (!blocks) {
-    const restaurant = await pickRestaurant(kvClient);
-    blocks = buildStandardBlocks(restaurant);
-  }
-
-  let captain;
-  if (manualTrigger) {
-    captain = { captainDisplay: '<@U07932S1ZK5>' };
-  } else {
-    captain = await getNextCaptain(kvClient);
-  }
-  if (captain) {
-    blocks = [...buildCaptainBlocks(captain.captainDisplay), ...blocks];
-  }
-
-  const result = await slack.chat.postMessage({
+  const result = await postLunchSuggestion({
+    slack,
     channel,
-    text: isDiscovery
-      ? `Discovery: ${discoveryPlace.name} — ${discoveryPlace.cuisine}`
-      : `Lunch suggestion: ${blocks[1].text.text.replace(/\*/g, '')}`,
-    blocks,
+    kvClient,
+    options: {
+      forceDiscovery,
+      ...(manualTrigger ? { captainDisplay: '<@U07932S1ZK5>' } : {}),
+    },
   });
 
   res.status(200).json({
     ok: true,
     ts: result.ts,
     channel: result.channel,
-    discovery: isDiscovery,
   });
 }
